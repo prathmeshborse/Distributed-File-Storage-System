@@ -294,8 +294,6 @@ Benchmarks and fault-injection scripts will live in `scripts/`.
 
 ## Benchmarks
 
-Real numbers only. Each row will be filled from a script in `scripts/` with the setup noted. Until measured, a row stays `TBD`.
-
 | Metric | Result | Setup |
 |---|---|---|
 | Load imbalance across nodes, 1 vnode | TBD | Ring simulation, 100k keys |
@@ -311,8 +309,6 @@ All containers share one machine, so throughput results are relative comparisons
 ---
 
 ## Failure Experiments
-
-Each scenario will be run on purpose, with what actually happened recorded.
 
 | Scenario | Expected | What actually happened | Fix |
 |---|---|---|---|
