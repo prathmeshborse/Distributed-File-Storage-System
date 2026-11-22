@@ -366,6 +366,7 @@ Stated up front, with what would change at larger scale.
 | Full replication costs 3x storage | Erasure coding for cold data |
 | Master and storage nodes share one HMAC secret, so one compromised node could forge tickets for the others | Asymmetric signatures (Ed25519): the Master signs, nodes only hold the public key |
 | Abandoned uploads leave `pending` rows and files stuck in `uploading` | Background cleanup job that expires stale uploads and removes orphaned chunks |
+| client fan-out multiplies client upload by the replica count. | HDFS/GFS use pipelined replication instead. I chose fan-out for simplicity and explicit confirmations, and I measured the cost.|
 ---
 
 ## Roadmap
