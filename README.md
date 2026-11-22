@@ -294,13 +294,32 @@ Benchmarks and fault-injection scripts will live in `scripts/`.
 
 ## Benchmarks
 
+Real numbers only. Each row comes from a script in the repo, with the setup noted. Rows marked `TBD` have not been measured yet.
+
+### Consistent hashing (ring simulation)
+
+Setup: 10 nodes, 100,000 keys (`chunk-0` to `chunk-99999`), SHA-256 truncated to 32 bits, one node (`node-3`) removed for the movement test. Reproduce with `node master/src/ring/experiment.js`. The results are deterministic.
+
+| Virtual nodes per node | Min keys on a node | Max keys on a node | Max/min ratio | Busiest node vs. fair share | Keys moved on removing 1 node |
+|---|---|---|---|---|---|
+| 1 | 268 | 30,704 | 114.6 | 207% over | 15.0% |
+| 10 | 5,372 | 13,792 | 2.57 | 37.9% over | 11.9% |
+| 150 | 8,973 | 10,870 | 1.21 | 8.7% over | 10.4% |
+
+For comparison, plain `hash % N` going from 10 to 9 nodes moves **89.9%** of keys.
+
+Notes:
+- A perfect split would be 10,000 keys per node.
+- With 1 vnode, removal moved 15% instead of about 10% because the removed node happened to own an oversized arc. Skew affects rebuild cost too.
+- This measures placement only. It is a simulation of the algorithm and says nothing about disk or network behavior.
+
+### System benchmarks (not measured yet)
+
 | Metric | Result | Setup |
 |---|---|---|
-| Load imbalance across nodes, 1 vnode | TBD | Ring simulation, 100k keys |
-| Load imbalance across nodes, 150 vnodes | TBD | Same keys |
-| Keys moved when one node is removed | TBD | Compared with `hash % N` |
 | Upload throughput, 1 stream vs. 4 parallel | TBD | Same file, median of 3 runs |
 | Memory usage for a 1 GB file with streaming | TBD | |
+| Upload speed with fsync on vs. off | TBD | Same file, median of 3 runs |
 | Heartbeat detection time (death to marked dead) | TBD | |
 | Time to restore replica count after a node kill | TBD | Report with data volume |
 
@@ -309,6 +328,19 @@ All containers share one machine, so throughput results are relative comparisons
 ---
 
 ## Failure Experiments
+
+Each scenario is run on purpose, with what actually happened recorded.
+
+### Completed
+
+| Scenario | Expected | What actually happened | Fix |
+|---|---|---|---|
+| `upload-init` with an invalid chunk hash (too short, non-hex) | Rejected before any work | 400 with a clear message, nothing written | None needed |
+| `upload-init` with fewer alive nodes than replicas (2 alive, 3 required) | Refuse rather than write an under-replicated file | 503-style error naming the shortfall, nothing written | None needed |
+| Error injected in `upload-init` after the inserts, before commit | No partial file left behind | Transaction rolled back, 0 rows in `files`, `chunks` and `chunk_locations` | None needed |
+| Storage node request with a missing, wrong-chunk, tampered, or wrong-operation ticket | Rejected without reading the body | 401 with reason `malformed`, `wrong chunk`, `bad signature`, `wrong operation` | None needed |
+
+### Planned
 
 | Scenario | Expected | What actually happened | Fix |
 |---|---|---|---|
@@ -332,7 +364,8 @@ Stated up front, with what would change at larger scale.
 | Metadata in a single PostgreSQL instance | Sharded or replicated metadata store |
 | No encryption at rest | Encrypted volumes or per-chunk encryption with key management |
 | Full replication costs 3x storage | Erasure coding for cold data |
-
+| Master and storage nodes share one HMAC secret, so one compromised node could forge tickets for the others | Asymmetric signatures (Ed25519): the Master signs, nodes only hold the public key |
+| Abandoned uploads leave `pending` rows and files stuck in `uploading` | Background cleanup job that expires stale uploads and removes orphaned chunks |
 ---
 
 ## Roadmap
