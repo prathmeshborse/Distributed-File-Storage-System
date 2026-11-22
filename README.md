@@ -339,7 +339,9 @@ Each scenario is run on purpose, with what actually happened recorded.
 | `upload-init` with fewer alive nodes than replicas (2 alive, 3 required) | Refuse rather than write an under-replicated file | 503-style error naming the shortfall, nothing written | None needed |
 | Error injected in `upload-init` after the inserts, before commit | No partial file left behind | Transaction rolled back, 0 rows in `files`, `chunks` and `chunk_locations` | None needed |
 | Storage node request with a missing, wrong-chunk, tampered, or wrong-operation ticket | Rejected without reading the body | 401 with reason `malformed`, `wrong chunk`, `bad signature`, `wrong operation` | None needed |
-
+| Kill 1 of 3 target nodes during an upload (write quorum W=2, RF=3) | Upload still succeeds, chunk recorded as under-replicated | `complete` returned 200 with 2 confirmed replicas and `underReplicatedChunks: 1`; the dead node's pending row was deleted | None needed. Repair loop will restore the third copy |
+| Kill 2 of 3 target nodes during an upload | Quorum fails, nothing falsely committed | `complete` returned 409 (`confirmed: 1, needed: 2`); file stayed `uploading` and all rows stayed `pending` | None needed. Client may retry and call `complete` again |
+| Re-upload an already stored chunk | Harmless | Nodes replied 200 `alreadyExisted`, no duplicate files created | None needed |
 ### Planned
 
 | Scenario | Expected | What actually happened | Fix |
@@ -349,7 +351,6 @@ Each scenario is run on purpose, with what actually happened recorded.
 | Corrupt a stored chunk | TBD | TBD | TBD |
 | Restart the Master | TBD | TBD | TBD |
 | Network drop partway through a file | TBD | TBD | TBD |
-| Replica write fails but another succeeds | TBD | TBD | TBD |
 
 ---
 
