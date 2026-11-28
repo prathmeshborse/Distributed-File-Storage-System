@@ -342,6 +342,8 @@ Each scenario is run on purpose, with what actually happened recorded.
 | Kill 1 of 3 target nodes during an upload (write quorum W=2, RF=3) | Upload still succeeds, chunk recorded as under-replicated | `complete` returned 200 with 2 confirmed replicas and `underReplicatedChunks: 1`; the dead node's pending row was deleted | None needed. Repair loop will restore the third copy |
 | Kill 2 of 3 target nodes during an upload | Quorum fails, nothing falsely committed | `complete` returned 409 (`confirmed: 1, needed: 2`); file stayed `uploading` and all rows stayed `pending` | None needed. Client may retry and call `complete` again |
 | Re-upload an already stored chunk | Harmless | Nodes replied 200 `alreadyExisted`, no duplicate files created | None needed |
+| Download after a storage node is killed | Fails over to another replica | Download succeeded, byte-identical (SHA-256 match); 7 failovers, matching the 7 chunks whose first replica was on the dead node | None needed |
+| Download when one stored chunk is corrupted on disk | Corrupt replica detected and skipped | Hash check caught it (`corrupt replicas 1`), another replica was used, output byte-identical | None needed. Corrupt copy still marked committed: needs an integrity scrubber |
 ### Planned
 
 | Scenario | Expected | What actually happened | Fix |
